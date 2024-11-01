@@ -1,0 +1,42 @@
+on:
+  # We need pull_request_target to post comments on PRs
+  pull_request_target:
+
+jobs:
+  comment:
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout PR branch
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      # Copy only weights.pt and delete the rest
+      - run: |
+          cp weights.pt /tmp/weights.pt
+          cd ..
+          rm -rf ctf3
+          mkdir ctf3
+          cd ctf3
+      # Checkout main branch
+      - uses: actions/checkout@v3
+      # Copy back saved weights.pt
+      - run: |
+          rm weights.pt
+          cp /tmp/weights.pt weights.pt
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+      - name: Install requirements
+        run: |
+          pip install -r requirements-gha.txt
+      - name: Comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TODO: why do we pass this?
+          SECRET: ${{ secrets.FLAG }}
+          PR_NUM: ${{ github.event.number }}
+        run: |
+          python3 .github/scripts/post_comment.py "${PR_NUM}"
